@@ -99,6 +99,8 @@ window.onload = function() {
   
 // }
 
+
+//TASK 2 
 function populateCategories() {
   const categoryFilter = document.getElementById("categoryFilter");
   const uniqueCategories = [...new Set(quotes.map(quote => quote.category))];
@@ -198,5 +200,70 @@ window.onload = function() {
   populateCategories(); // Populate categories on load
 };
 
+
+//TASK 3 
+const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API URL
+
+function fetchQuotesFromServer() {
+  fetch(SERVER_URL)
+    .then(response => response.json())
+    .then(data => {
+      const fetchedQuotes = data.map(item => ({
+        text: item.title, // Simulating quote text
+        category: item.body // Simulating quote category
+      }));
+      syncQuotes(fetchedQuotes);
+    })
+    .catch(error => console.error("Error fetching quotes:", error));
+}
+
+function syncQuotes(fetchedQuotes) {
+  const currentQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
+  
+  // Simple conflict resolution: server data takes precedence
+  fetchedQuotes.forEach(fetchedQuote => {
+    const existingQuoteIndex = currentQuotes.findIndex(q => q.text === fetchedQuote.text);
+    if (existingQuoteIndex === -1) {
+      currentQuotes.push(fetchedQuote); // Add new quote if it doesn't exist
+    } else {
+      currentQuotes[existingQuoteIndex] = fetchedQuote; // Update existing quote
+    }
+  });
+
+  localStorage.setItem("quotes", JSON.stringify(currentQuotes));
+  loadQuotes(); // Refresh displayed quotes
+}
+
+// Call fetchQuotesFromServer periodically (e.g., every 10 seconds)
+setInterval(fetchQuotesFromServer, 10000);
+
+
+//UPDATE JS CODE FOR NOTIFICATIONS
+function syncQuotes(fetchedQuotes) {
+  const currentQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
+  
+  let updated = false; // Flag to track if any updates occurred
+  
+  fetchedQuotes.forEach(fetchedQuote => {
+    const existingQuoteIndex = currentQuotes.findIndex(q => q.text === fetchedQuote.text);
+    if (existingQuoteIndex === -1) {
+      currentQuotes.push(fetchedQuote); // Add new quote if it doesn't exist
+      updated = true; // New quote added
+    } else {
+      if (currentQuotes[existingQuoteIndex].category !== fetchedQuote.category) {
+        updated = true; // Conflict detected
+      }
+      currentQuotes[existingQuoteIndex] = fetchedQuote; // Update existing quote
+    }
+  });
+
+  localStorage.setItem("quotes", JSON.stringify(currentQuotes));
+  
+  if (updated) {
+    alert("Data has been updated from the server."); // Notify user of updates
+  }
+
+  loadQuotes(); // Refresh displayed quotes
+}
 
 
