@@ -219,15 +219,30 @@ async function fetchQuotesFromServer() {
   }
 }
 
+async function postQuoteToServer(quote) {
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(quote),
+    });
+    return await response.json(); // Return the posted quote from the server
+  } catch (error) {
+    console.error("Error posting quote:", error);
+  }
+}
+
+// Call syncQuotesWithServer periodically (e.g., every 30 seconds)
+setInterval(syncQuotesWithServer, 30000);
+
 async function syncQuotesWithServer() {
   const serverQuotes = await fetchQuotesFromServer();
   if (serverQuotes.length > 0) {
     resolveConflicts(serverQuotes);
   }
 }
-
-// Call syncQuotesWithServer periodically (e.g., every 30 seconds)
-setInterval(syncQuotesWithServer, 30000);
 
 function resolveConflicts(serverQuotes) {
   const existingQuotes = new Map(quotes.map(quote => [quote.text, quote]));
@@ -237,18 +252,15 @@ function resolveConflicts(serverQuotes) {
       // If the quote does not exist locally, add it
       quotes.push(serverQuote);
     } else {
-      // If it exists, we can choose to update or ignore based on your strategy
+      // If it exists, we replace the local quote with the server quote
       const localQuote = existingQuotes.get(serverQuote.text);
-      // For simplicity, we'll replace the local quote with the server quote
-      Object.assign(localQuote, serverQuote);
+      Object.assign(localQuote, serverQuote); // Update local quote with server data
     }
   });
 
   saveQuotes(); // Save updated quotes to local storage
   populateCategories(); // Update categories in dropdown
 }
-
-
 
 function showNotification(message) {
   const notification = document.getElementById("notification");
@@ -284,4 +296,3 @@ function resolveConflicts(serverQuotes) {
     showNotification("Data has been updated from the server.");
   }
 }
-
