@@ -202,6 +202,7 @@ window.onload = function() {
 
 
 //TASK 3 
+//Simulate server interaction
 const API_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API URL for simulation
 
 async function fetchQuotesFromServer() {
@@ -224,11 +225,15 @@ async function postQuoteToServer(quote) {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(quote),
+      body: JSON.stringify(quote)
     });
-    return await response.json(); // Return the posted quote from the server
+    
+    if (!response.ok) throw new Error('Network response was not ok');
+    
+    const data = await response.json();
+    return data; // Return the posted quote or any relevant info
   } catch (error) {
     console.error("Error posting quote:", error);
   }
@@ -237,8 +242,10 @@ async function postQuoteToServer(quote) {
 // Call syncQuotesWithServer periodically (e.g., every 30 seconds)
 setInterval(syncQuotesWithServer, 30000);
 
+//implement Data Syncing
 async function syncQuotesWithServer() {
   const serverQuotes = await fetchQuotesFromServer();
+  
   if (serverQuotes.length > 0) {
     resolveConflicts(serverQuotes);
   }
@@ -247,21 +254,31 @@ async function syncQuotesWithServer() {
 function resolveConflicts(serverQuotes) {
   const existingQuotes = new Map(quotes.map(quote => [quote.text, quote]));
 
+  let updatesMade = false;
+
   serverQuotes.forEach(serverQuote => {
     if (!existingQuotes.has(serverQuote.text)) {
       // If the quote does not exist locally, add it
       quotes.push(serverQuote);
+      updatesMade = true;
     } else {
-      // If it exists, we replace the local quote with the server quote
+      // If it exists, we can choose to update or ignore based on your strategy
       const localQuote = existingQuotes.get(serverQuote.text);
-      Object.assign(localQuote, serverQuote); // Update local quote with server data
+      if (localQuote.category !== serverQuote.category) { // Example condition for conflict
+        Object.assign(localQuote, serverQuote); // Update local quote with server data
+        updatesMade = true;
+      }
     }
   });
 
-  saveQuotes(); // Save updated quotes to local storage
-  populateCategories(); // Update categories in dropdown
+  if (updatesMade) {
+    saveQuotes(); // Save updated quotes to local storage
+    populateCategories(); // Update categories in dropdown
+    showNotification("Quotes synced with server!"); // Show notification
+  }
 }
 
+//Handling conflict resolution UI Elements
 function showNotification(message) {
   const notification = document.getElementById("notification");
   notification.innerText = message;
@@ -270,29 +287,4 @@ function showNotification(message) {
   setTimeout(() => {
     notification.style.display = "none";
   }, 5000); // Hide after 5 seconds
-}
-
-function resolveConflicts(serverQuotes) {
-  const existingQuotes = new Map(quotes.map(quote => [quote.text, quote]));
-  
-  let updatesMade = false;
-
-  serverQuotes.forEach(serverQuote => {
-    if (!existingQuotes.has(serverQuote.text)) {
-      quotes.push(serverQuote);
-      updatesMade = true;
-    } else {
-      const localQuote = existingQuotes.get(serverQuote.text);
-      if (localQuote.category !== serverQuote.category) { // Example condition for conflict
-        Object.assign(localQuote, serverQuote);
-        updatesMade = true;
-      }
-    }
-  });
-
-  if (updatesMade) {
-    saveQuotes(); 
-    populateCategories(); 
-    showNotification("Data has been updated from the server.");
-  }
 }
