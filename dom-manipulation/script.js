@@ -202,68 +202,86 @@ window.onload = function() {
 
 
 //TASK 3 
-const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API URL
+const API_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API URL for simulation
 
-function fetchQuotesFromServer() {
-  fetch(SERVER_URL)
-    .then(response => response.json())
-    .then(data => {
-      const fetchedQuotes = data.map(item => ({
-        text: item.title, // Simulating quote text
-        category: item.body // Simulating quote category
-      }));
-      syncQuotes(fetchedQuotes);
-    })
-    .catch(error => console.error("Error fetching quotes:", error));
-}
-
-function syncQuotes(fetchedQuotes) {
-  const currentQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
-  
-  // Simple conflict resolution: server data takes precedence
-  fetchedQuotes.forEach(fetchedQuote => {
-    const existingQuoteIndex = currentQuotes.findIndex(q => q.text === fetchedQuote.text);
-    if (existingQuoteIndex === -1) {
-      currentQuotes.push(fetchedQuote); // Add new quote if it doesn't exist
-    } else {
-      currentQuotes[existingQuoteIndex] = fetchedQuote; // Update existing quote
-    }
-  });
-
-  localStorage.setItem("quotes", JSON.stringify(currentQuotes));
-  loadQuotes(); // Refresh displayed quotes
-}
-
-// Call fetchQuotesFromServer periodically (e.g., every 10 seconds)
-setInterval(fetchQuotesFromServer, 10000);
-
-
-//UPDATE JS CODE FOR NOTIFICATIONS
-function syncQuotes(fetchedQuotes) {
-  const currentQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
-  
-  let updated = false; // Flag to track if any updates occurred
-  
-  fetchedQuotes.forEach(fetchedQuote => {
-    const existingQuoteIndex = currentQuotes.findIndex(q => q.text === fetchedQuote.text);
-    if (existingQuoteIndex === -1) {
-      currentQuotes.push(fetchedQuote); // Add new quote if it doesn't exist
-      updated = true; // New quote added
-    } else {
-      if (currentQuotes[existingQuoteIndex].category !== fetchedQuote.category) {
-        updated = true; // Conflict detected
-      }
-      currentQuotes[existingQuoteIndex] = fetchedQuote; // Update existing quote
-    }
-  });
-
-  localStorage.setItem("quotes", JSON.stringify(currentQuotes));
-  
-  if (updated) {
-    alert("Data has been updated from the server."); // Notify user of updates
+async function fetchQuotesFromServer() {
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    // Simulate quotes structure
+    return data.map(item => ({
+      text: item.title, // Use title as quote text
+      category: "General" // Default category for simulation
+    }));
+  } catch (error) {
+    console.error("Error fetching quotes:", error);
+    return [];
   }
-
-  loadQuotes(); // Refresh displayed quotes
 }
 
+async function syncQuotesWithServer() {
+  const serverQuotes = await fetchQuotesFromServer();
+  if (serverQuotes.length > 0) {
+    resolveConflicts(serverQuotes);
+  }
+}
+
+// Call syncQuotesWithServer periodically (e.g., every 30 seconds)
+setInterval(syncQuotesWithServer, 30000);
+
+function resolveConflicts(serverQuotes) {
+  const existingQuotes = new Map(quotes.map(quote => [quote.text, quote]));
+
+  serverQuotes.forEach(serverQuote => {
+    if (!existingQuotes.has(serverQuote.text)) {
+      // If the quote does not exist locally, add it
+      quotes.push(serverQuote);
+    } else {
+      // If it exists, we can choose to update or ignore based on your strategy
+      const localQuote = existingQuotes.get(serverQuote.text);
+      // For simplicity, we'll replace the local quote with the server quote
+      Object.assign(localQuote, serverQuote);
+    }
+  });
+
+  saveQuotes(); // Save updated quotes to local storage
+  populateCategories(); // Update categories in dropdown
+}
+
+
+
+function showNotification(message) {
+  const notification = document.getElementById("notification");
+  notification.innerText = message;
+  notification.style.display = "block";
+  
+  setTimeout(() => {
+    notification.style.display = "none";
+  }, 5000); // Hide after 5 seconds
+}
+
+function resolveConflicts(serverQuotes) {
+  const existingQuotes = new Map(quotes.map(quote => [quote.text, quote]));
+  
+  let updatesMade = false;
+
+  serverQuotes.forEach(serverQuote => {
+    if (!existingQuotes.has(serverQuote.text)) {
+      quotes.push(serverQuote);
+      updatesMade = true;
+    } else {
+      const localQuote = existingQuotes.get(serverQuote.text);
+      if (localQuote.category !== serverQuote.category) { // Example condition for conflict
+        Object.assign(localQuote, serverQuote);
+        updatesMade = true;
+      }
+    }
+  });
+
+  if (updatesMade) {
+    saveQuotes(); 
+    populateCategories(); 
+    showNotification("Data has been updated from the server.");
+  }
+}
 
